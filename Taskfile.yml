@@ -1,0 +1,90 @@
+version: "3"
+
+vars:
+  SRC_DIR: src
+  TESTS_DIR: tests
+  SCRIPT_DIR: scripts
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task -l
+
+  lint:
+    desc: Run all linting checks
+    cmds:
+      - task: lint:ruff
+      - task: lint:pyright
+
+  lint:ruff:
+    desc: Run ruff linter
+    cmds:
+      - uv run ruff check {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+
+  lint:fix:
+    desc: Run ruff linter with auto-fix
+    cmds:
+      - uv run ruff check --fix {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+
+  lint:fix-unsafe:
+    desc: Run ruff linter with unsafe auto-fixes
+    cmds:
+      - uv run ruff check --fix --unsafe-fixes {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+
+  lint:pyright:
+    desc: Run pyright type checker
+    cmds:
+      - uv run pyright {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+
+  format:
+    desc: Run all formatters
+    cmds:
+      - task: lint:fix-unsafe
+      - task: format:ruff
+
+  format:ruff:
+    desc: Run ruff formatter
+    cmds:
+      - uv run ruff format {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+
+  test:
+    desc: Run all tests
+    cmds:
+    - |
+      if [ -z "{{.CLI_ARGS}}" ]; then
+        uv run pytest {{.TESTS_DIR}}
+      else
+        uv run pytest {{.CLI_ARGS}}
+      fi
+
+  test:coverage:
+    desc: Run tests with coverage analysis
+    cmds:
+      - uv run pytest --cov={{.COV_MODULE}} --cov-report=term-missing {{.TESTS_DIR}} -n logical
+
+  test:coverage:xml:
+    desc: Run tests with coverage analysis and generate XML report
+    cmds:
+      - uv run pytest --cov={{.COV_MODULE}} --cov-branch --cov-report=xml {{.TESTS_DIR}} -n logical
+
+  ci:
+    desc: Run all checks and tests
+    cmds:
+      - task: format
+      - task: lint
+      - task: test
+
+  pre-commit:
+    desc: Run pre-commit checks on staged files only
+    cmds:
+      - |
+        STAGED_FILES=$(git diff --name-only --cached --diff-filter=ACMR | grep -E '\.py$' | tr '\n' ' ')
+        if [ -n "$STAGED_FILES" ]; then
+          echo "Running checks on staged files: $STAGED_FILES"
+          # Only check, don't fix or format here
+          uv run ruff check $STAGED_FILES
+          uv run ruff format $STAGED_FILES --check
+        else
+          echo "No Python files staged for commit"
+        fi

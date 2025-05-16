@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.env.local
+.venv
+env/
+venv/
+ENV/
+
+# Project specific
+documentation.md
+build/languages.so
+vendor/
+
+# Testing
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+.ruff_cache/
+.mypy_cache/
+
+# Radon
+.radon/
+
+# Distribution
+*.tar.gz
+*.whl
+
+# Logs
+*.log
+logs/
+
+# Packaging
+dist/
+PACKAGING.mddocumentation/
+
+# Generated Docs
+documentation/
+todo/
+
+# AI Models
+models.safetensor
+tokenizer.json
+*.safetensors
+models/qodo_embed_m2v/model.safetensors
+models/qodo_embed_m2v/tokenizer.json
+
+# CodeMap cache
+.codemap_cache
+
+# mkdocs
+.cache
+site

@@ -1,0 +1,160 @@
+[project]
+name = "codestruct"
+version = "0.1.0"
+description = "CodeStruct is a plain-text, human and machine readable, language-agnostic notation for describing the structure of software"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.400",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "pytest-httpx>=0.35.0",
+    "pytest-sugar>=1.0.0",
+    "pytest-xdist[psutil]>=3.6.1",
+    "ruff>=0.11.8",
+]
+
+[tool.pyright]
+# Define included and excluded directories
+include = ["src", "tests"]
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "vendor"
+]
+# Basic type checking mode - more lenient than strict
+typeCheckingMode = "standard"
+# Analyze unannotated functions
+analyzeUnannotatedFunctions = true
+# Configuration to enable good type checking but not be too strict
+reportMissingImports = "error"
+reportMissingTypeStubs = "warning"
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
+reportGeneralTypeIssues = "error"
+# Useful for catching common errors
+reportOptionalSubscript = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalCall = "error"
+# Enable Python 3.12 features
+pythonVersion = "3.12"
+# Use library code for types when type stubs are missing
+useLibraryCodeForTypes = true
+# Virtual environment configuration
+venvPath = "."
+venv = ".venv"
+# Extra paths to search for imported modules
+extraPaths = ["src"]
+
+[tool.pytest]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+# Exclude files/directories
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "vendor"
+]
+
+[tool.ruff.lint]
+# Enable all rules by default, then selectively disable
+select = ["ALL"]
+ignore = [
+    # Rules that conflict with other tools/preferences
+    "D203",  # one-blank-line-before-class
+    "D212",  # multi-line-summary-first-line
+    "FBT001",  # Boolean positional arg in function definition (required for typer)
+    "FBT002",  # Boolean default value in function definition (required for typer)
+    "C901",  # function too complex
+    "PLR0911",  # too many return statements
+    "PLR0912",  # too many branches
+    "PLR0913",  # too many arguments in function definition
+    "PLR0915",  # too many statements
+    "TRY300",  # Consider moving this statement to an `else` block
+    "COM812",  # Use a constant for the message in a raise statement
+    "TC001",  # Move application import into a type-checking block
+    "ERA001", # Found commented-out code
+    "G004", # Logging statement uses f-string
+    "TD003", # Missing link in to-do
+    "TRY301", # Abstract raise to an inner function
+    # Disable rules that conflict with tab indentation
+    "E101",  # Indentation contains mixed spaces and tabs
+    "W191",  # indentation contains tabs
+    "D206",  # indent with spaces, not tabs
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = [
+    "S101",  # Use of assert detected (security risk in production)
+    "PLR2004",  # Magic value comparison (should use constant)
+    "ANN002",  # Missing type annotation for argument
+    "ANN003",  # Missing type annotation for return value
+    "SLF001",  # Private member accessed (name starts with underscore)
+    "S108",  # File permissions set too openly (security risk)
+    "S105",  # Hardcoded password/token (security risk)
+    "PT019",  # Fixture without return type annotation
+    "ANN001",  # Missing type annotation for function argument
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "D102",  # Missing docstring in public method
+    "ARG001",  # Unused function argument
+    "E501",  # Line too long (>120 characters)
+    "N806",  # Variable in function should be lowercase
+    "BLE001", # Do not catch blind exceptions
+]
+"scripts/*" = [
+    "S101",  # Use of assert detected (security risk in production)
+    "PLR2004",  # Magic value comparison (should use constant)
+    "ANN002",  # Missing type annotation for argument
+    "ANN003",  # Missing type annotation for return value
+    "SLF001",  # Private member accessed (name starts with underscore)
+    "S108",  # File permissions set too openly (security risk)
+    "S105",  # Hardcoded password/token (security risk)
+    "PT019",  # Fixture without return type annotation
+    "ANN001",  # Missing type annotation for function argument
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "D102",  # Missing docstring in public method
+    "ARG001",  # Unused function argument
+    "E501",  # Line too long (>120 characters)
+    "N806",  # Variable in function should be lowercase
+    "BLE001", # Do not catch blind exceptions
+    "S603", # Use of unsafe subprocess call
+    "S607", # Starting a process with a partial executable path
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-branches = 12
+max-statements = 50
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+skip-magic-trailing-comma = false
+line-ending = "auto"
