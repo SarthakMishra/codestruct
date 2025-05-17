@@ -265,24 +265,67 @@ module: api_client
 
 ---
 
-## 7. Parsing and Tooling
+## 7. Hash Identifiers for Change Tracking
+
+CodeStruct supports hash identifiers to enable efficient change tracking and comparison across versions of a codebase. This feature is implemented as an optional extension of the core notation.
+
+### 7.1. Hash ID Format and Usage
+
+Hash identifiers are appended to entity declarations using triple colons (`:::`) followed by a hexadecimal hash value:
+
+```
+dir: my_project ::: 56d375812962541bc30522febfa59c15
+  file: math_utils.py ::: 56d375812962541bc30522febfa59c15
+```
+
+### 7.2. Merkle-Tree-Like Implementation
+
+The hash system is implemented as a merkle-tree-like hierarchy where:
+
+- Each entity (file, directory, module, class, etc.) has its own unique hash
+- Parent entity hashes incorporate the hashes of all their children
+- Any change to a child entity propagates upward, changing all parent hashes
+
+This hierarchical structure enables efficient change detection:
+1. Compare root-level hashes to quickly determine if any changes exist
+2. If a change is detected, traverse the tree by comparing hashes at each level
+3. Follow the path of changed hashes to precisely identify which entities were modified
+
+### 7.3. Benefits of Hash Identifiers
+
+- **Efficient Change Detection**: Quickly identify if and where changes occurred without full content comparison
+- **Integrity Verification**: Verify that content has not been altered
+- **Version Comparison**: Compare different versions of a codebase structure
+- **Incremental Updates**: Support for updating only changed portions of a model or documentation
+
+### 7.4. Implementation Notes
+
+The hash system is an optional extension of CodeStruct. Implementations should:
+- Generate hashes consistently using a deterministic algorithm (e.g., xxHash)
+- Calculate file hashes based on content
+- Calculate directory/module/class hashes based on name, type, and child hashes
+- Normalize paths and content before hashing to ensure consistency across platforms
+
+---
+
+## 8. Parsing and Tooling
 
 - CodeStruct is designed to be easily parsed by scripts or tools, enabling codebase analysis, documentation generation, and cross-language transformations.
 - Parsers should ignore comments and handle missing optional fields gracefully.
 
 ---
 
-## 8. Example with All Features
+## 9. Example with All Features
 
 ```
 dir: my_project ::: 56d375812962541bc30522febfa59c15
   file: math_utils.py ::: 56d375812962541bc30522febfa59c15
-    module: math_utils
+    module: math_utils ::: a7c5e83bf61d49eb89f64aa3cc85121d
       doc: Math utilities module...
-      import: numpy & scipy & matplotlib
+      import: numpy & scipy & matplotlib ::: 3e1fc985a72401d487ce4abad98e4a36
         type: external
         source: pypi
-      func: add
+      func: add ::: 2b8a9cf7e1243f6a82f45c8b8ef28d7b
         doc: Adds two numbers...
         param: a [type: INTEGER]
         param: b [type: INTEGER]
@@ -300,29 +343,30 @@ dir: my_project ::: 56d375812962541bc30522febfa59c15
             return "\n".join(files_summary) if files_summary else "No file information available"
           ```
         returns: INTEGER
-      func: multiply
+      func: multiply ::: 4f9a0c8d75b2461ea3e97fe72d81f5c0
         doc: Multiplies two numbers...
         param: a [type: INTEGER]
         param: b [type: INTEGER]
         returns: INTEGER
-        import: add
+        import: add ::: 2b8a9cf7e1243f6a82f45c8b8ef28d7b
           type: internal
           ref: func: add
-      const: PI [type: FLOAT, default: 3.14159]
-      func: process_data
+      const: PI ::: d3fa68c1e0584ab58e2c52e9ba187c95
+        [type: FLOAT, default: 3.14159]
+      func: process_data ::: 9c7412e8f6b34d80a1fc56c3d2ebf472
         doc: Processes data using numpy...
         param: data [type: "List[Dict[str, float]]"]
         returns: "numpy.ndarray"
-  file: README.md
+  file: README.md ::: 1a4f5bcd78e96f201ac37985b9b67e29
 ```
 
 ---
 
-## 9. Minification for LLM Context Compression
+## 10. Minification for LLM Context Compression
 
 For scenarios requiring maximum context efficiency, CodeStruct can be minified while preserving its hierarchical structure and semantic information.
 
-### 9.1. General Minification Principles
+### 10.1. General Minification Principles
 
 - Remove all blank lines.
 - Replace indentation and line-breaks with delimiters: `;` to separate top-level entities, `|` to separate children, and `,` for attributes.
@@ -331,9 +375,10 @@ For scenarios requiring maximum context efficiency, CodeStruct can be minified w
 - Truncate or omit docstrings where context is clear.
 - Remove attribute names when the type provides sufficient context.
 - **Omit all `impl:` implementation blocks from the minified output.**
+- **Remove all hash identifiers (values after `:::`) during minification.**
 - Include a legend/mapping to help LLMs interpret the minified format correctly.
 
-### 9.2. Keyword Shortening Reference
+### 10.2. Keyword Shortening Reference
 
 | Original    | Minified |
 |-------------|----------|
@@ -354,7 +399,7 @@ For scenarios requiring maximum context efficiency, CodeStruct can be minified w
 | source:     | s:       |
 | ref:        | rf:      |
 
-### 9.3. Attribute Compression
+### 10.3. Attribute Compression
 
 - Inline attributes with minimal separators:  
   `attr: name [type: STRING, default: "John"]` → `at:name[t:STR,d:"John"]`
@@ -364,32 +409,33 @@ For scenarios requiring maximum context efficiency, CodeStruct can be minified w
   - `BOOLEAN` → `BOOL`
   - `FLOAT` → `FLT`
 
-### 9.4. Minification Example
+### 10.4. Minification Example
 
 Original CodeStruct:
 ```
-dir: my_project
-  file: math_utils.py
-    module: math_utils
+dir: my_project ::: 56d375812962541bc30522febfa59c15
+  file: math_utils.py ::: 56d375812962541bc30522febfa59c15
+    module: math_utils ::: a7c5e83bf61d49eb89f64aa3cc85121d
       doc: Math utilities module...
-      import: numpy & scipy
+      import: numpy & scipy ::: 3e1fc985a72401d487ce4abad98e4a36
         type: external
         source: pypi
-      func: add
+      func: add ::: 2b8a9cf7e1243f6a82f45c8b8ef28d7b
         doc: Adds two numbers...
         param: a [type: INTEGER]
         param: b [type: INTEGER]
         returns: INTEGER
-      func: multiply
+      func: multiply ::: 4f9a0c8d75b2461ea3e97fe72d81f5c0
         doc: Multiplies two numbers...
         param: a [type: INTEGER]
         param: b [type: INTEGER]
         returns: INTEGER
-        import: add
+        import: add ::: 2b8a9cf7e1243f6a82f45c8b8ef28d7b
           type: internal
           ref: func: add
-      const: PI [type: FLOAT, default: 3.14159]
-  file: README.md
+      const: PI ::: d3fa68c1e0584ab58e2c52e9ba187c95
+        [type: FLOAT, default: 3.14159]
+  file: README.md ::: 1a4f5bcd78e96f201ac37985b9b67e29
 ```
 
 Minified Version:
@@ -397,7 +443,7 @@ Minified Version:
 d:my_project;f:math_utils.py;m:math_utils;i:numpy&scipy[t:ext,s:pypi];fn:add|p:a[t:INT],p:b[t:INT],r:INT;fn:multiply|p:a[t:INT],p:b[t:INT],r:INT,i:add[t:int,rf:fn:add];c:PI[t:FLT,d:3.14159];f:README.md
 ```
 
-### 9.5. Structure Legend
+### 10.5. Structure Legend
 
 When using minified CodeStruct, include a legend to assist LLMs:
 ```
