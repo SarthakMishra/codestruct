@@ -3,7 +3,6 @@ version: "3"
 vars:
   SRC_DIR: src
   TESTS_DIR: tests
-  SCRIPT_DIR: scripts
 
 tasks:
   default:
@@ -20,22 +19,22 @@ tasks:
   lint:ruff:
     desc: Run ruff linter
     cmds:
-      - uv run ruff check {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+      - uv run ruff check {{.SRC_DIR}} {{.TESTS_DIR}}
 
   lint:fix:
     desc: Run ruff linter with auto-fix
     cmds:
-      - uv run ruff check --fix {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+      - uv run ruff check --fix {{.SRC_DIR}} {{.TESTS_DIR}}
 
   lint:fix-unsafe:
     desc: Run ruff linter with unsafe auto-fixes
     cmds:
-      - uv run ruff check --fix --unsafe-fixes {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+      - uv run ruff check --fix --unsafe-fixes {{.SRC_DIR}} {{.TESTS_DIR}}
 
   lint:pyright:
     desc: Run pyright type checker
     cmds:
-      - uv run pyright {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+      - uv run pyright {{.SRC_DIR}} {{.TESTS_DIR}}
 
   format:
     desc: Run all formatters
@@ -46,7 +45,7 @@ tasks:
   format:ruff:
     desc: Run ruff formatter
     cmds:
-      - uv run ruff format {{.SRC_DIR}} {{.TESTS_DIR}} {{.SCRIPT_DIR}}
+      - uv run ruff format {{.SRC_DIR}} {{.TESTS_DIR}}
 
   test:
     desc: Run all tests
@@ -57,16 +56,6 @@ tasks:
       else
         uv run pytest {{.CLI_ARGS}}
       fi
-
-  test:coverage:
-    desc: Run tests with coverage analysis
-    cmds:
-      - uv run pytest --cov={{.COV_MODULE}} --cov-report=term-missing {{.TESTS_DIR}} -n logical
-
-  test:coverage:xml:
-    desc: Run tests with coverage analysis and generate XML report
-    cmds:
-      - uv run pytest --cov={{.COV_MODULE}} --cov-branch --cov-report=xml {{.TESTS_DIR}} -n logical
 
   ci:
     desc: Run all checks and tests
