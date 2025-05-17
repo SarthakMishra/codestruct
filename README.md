@@ -66,6 +66,8 @@
 
 ## 3. Supported Entity Keywords
 
+The following table lists a set of common core entity keywords. It's important to note that CodeStruct is designed to be extensible; users can define their own custom keywords beyond this list to suit specific domain needs or languages. Section 5 ("Reserved Keywords and Extensions") provides further details on this extensibility.
+
 | Keyword      | Description                                 | Example Usage                        |
 |--------------|---------------------------------------------|--------------------------------------|
 | `dir:`       | Directory (for filesystem hierarchy)         | `dir: src`                           |

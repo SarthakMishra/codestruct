@@ -1,0 +1,109 @@
+(* CodeStruct EBNF Grammar *)
+(* CodeStruct is a plain-text, human- and machine-readable, language-agnostic notation for describing
+   the structure of software. It captures entities such as modules, classes, functions, parameters,
+   variables, and more, in a concise, hierarchical, and extensible format. *)
+(* Please check the `src/codestruct/codestruct.lark` file for the Lark grammar which is the reference implementation. *)
+
+(* 1. Hierarchy and Indentation Rules *)
+(* - Hierarchy is represented by indentation (spaces or tabs; consistent usage is required)
+   - Parent entities contain child entities indented beneath them *)
+
+(* 2. Main Grammar *)
+Start = (Newline | Statement | Indentation | Dedentation)*;
+
+Statement = Comment | DocField | ImplField | Entity;
+
+(* 3. Comments *)
+(* Lines starting with # are comments and ignored by parsers *)
+Comment = "#", {non-newline-character};
+
+(* 4. Entity Definition *)
+(* Each entity is declared on a new line with the format: "keyword: entity_name [attributes]" *)
+Entity = EntityLine, [ChildBlock];
+EntityLine = Keyword, EntityName, [HashId], [Attributes], [GroupedEntities], [HashId];
+
+(* 5. Hash IDs for Change Tracking *)
+(* Hash identifiers are appended to entity declarations using triple colons (:::) 
+   followed by a hexadecimal hash value for change tracking *)
+HashId = (":::", HashValue)+;
+HashValue = (A-Za-z0-9_)+;
+
+(* 6. Child Block *)
+(* Child entities are indented beneath their parent entities *)
+ChildBlock = Indent, (Statement | Newline)*, Dedent+;
+
+(* 7. Grouped Entities *)
+(* Use the ampersand (&) to group related entities of the same type under a common parent *)
+GroupedEntities = "&", EntityName, {"&", EntityName};
+
+(* 8. Entity Name *)
+EntityName = {character-except-[]&#:,newline}+;
+
+(* 9. Attributes *)
+(* Attributes are key-value pairs enclosed in square brackets and comma-separated *)
+Attributes = "[", Attribute, {",", Attribute}, "]";
+Attribute = AttrKey, ":", AttrValue;
+AttrKey = (a-zA-Z_), {a-zA-Z0-9_};
+AttrValue = Array | StringValue | NumberValue | UnquotedSimpleValue;
+
+(* 10. Arrays *)
+Array = "[", [AttrValue, {",", AttrValue}], "]";
+
+(* 11. Simple Values *)
+StringValue = '"', {escaped-character | non-quote-character}, '"';
+NumberValue = ["-"], digit+, [".", digit+];
+UnquotedSimpleValue = {non-whitespace-comma-bracket-newline-character}+, {("[]")*};
+
+(* 12. Documentation Field *)
+(* Use the doc: field after an entity to provide a one-line summary *)
+DocField = "doc:", Docstring, [Newline];
+Docstring = {non-newline-character}+;
+
+(* 13. Implementation Field *)
+(* Use the impl: field to provide the full implementation of an entity in a code block *)
+ImplField = "impl:", Newline, Indent, CodeBlockRaw, Newline*, Dedent;
+
+(* 14. Entity Keywords *)
+(* Keywords identify the entity type (e.g., dir:, file:, module:, class:, func:, etc.) *)
+Keyword = (a-zA-Z_), {a-zA-Z0-9_}, ":";
+
+(* 15. Terminals and Helpers *)
+Newline = (CR, [LF] | LF)+, {space | tab};
+Indent = (* indentation increase *);
+Dedent = (* indentation decrease *);
+CodeBlockRaw = "```", [language-identifier], Newline, {any-character}*, "```", [Newline];
+
+(* 16. Character Classes *)
+(* space = U+0020 *)
+(* tab = U+0009 *)
+(* CR = U+000D *)
+(* LF = U+000A *)
+
+(* 17. Entity Types *)
+(* The grammar supports various entity keywords including:
+   - dir: Directory (for filesystem hierarchy)
+   - file: File
+   - module: Module or package
+   - namespace: Namespace (for languages with namespaces)
+   - class: Class or type definition
+   - func: Function or method
+   - lambda: Lambda expression
+   - attr: Attribute or class field
+   - param: Function/method parameter
+   - returns: Function/method return type/value
+   - var: Variable
+   - const: Constant
+   - type_alias: Type alias
+   - union: Union type
+   - optional: Optional value
+   - import: Import or dependency
+*)
+
+(* 18. Minification *)
+(* For context compression, CodeStruct can be minified to a more compact form:
+   - Remove blank lines
+   - Replace indentation with delimiters: ';' for top-level entities, '|' for children, ',' for attributes
+   - Abbreviate keywords (e.g., cl: for class:, fn: for func:)
+   - Omit implementation blocks and hash identifiers
+   - Abbreviate common types (INTEGER → INT, STRING → STR, etc.)
+*) 
