@@ -10,7 +10,8 @@ from typing import Any
 
 from lark import Tree
 
-from .parser import CodeStructParser
+from .linter import CodeStructLinter, LintMessage
+from .parser import CodeStructParser, ParseError
 from .transformer import CodeStructTransformer
 
 __version__ = "0.1.0"
@@ -52,8 +53,32 @@ def parse_file(file_path: str | Path, as_dict: bool = False) -> Tree | list[dict
 	return tree
 
 
+def lint_files(file_paths: list[str]) -> list[LintMessage]:
+	"""Lint multiple CodeStruct files.
+
+	Args:
+		file_paths: List of file paths to lint
+
+	Returns:
+		List of lint messages across all files
+	"""
+	linter = CodeStructLinter()
+	all_messages = []
+
+	for file_path in file_paths:
+		messages = linter.lint_file(file_path)
+		all_messages.extend(messages)
+
+	return all_messages
+
+
 __all__ = [
+	"CodeStructLinter",
 	"CodeStructParser",
+	"CodeStructTransformer",
+	"LintMessage",
+	"ParseError",
+	"lint_files",
 	"parse_file",
 	"parse_string",
 ]

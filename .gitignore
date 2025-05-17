@@ -71,6 +71,9 @@ models/qodo_embed_m2v/tokenizer.json
 # CodeMap cache
 .codemap_cache
 
+# Auto generated type stubs
+typings
+
 # mkdocs
 .cache
 site
