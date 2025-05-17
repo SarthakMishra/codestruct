@@ -17,7 +17,9 @@
 
 - Each entity is declared on a new line with the format:  
   ```
-  :  []
+  <Keyword>: <Enity_Name>  [<Att_Key>: <Att_Value>]
+
+  Example: `func: start [type: Async]`
   ```
 - **Keywords** identify the entity type (see section 3).
 - **Attributes** are optional, enclosed in square brackets, and comma-separated.
