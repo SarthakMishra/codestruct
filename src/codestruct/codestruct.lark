@@ -1,0 +1,62 @@
+// CodeStruct Lark Grammar
+// Supports indentation-based hierarchy, entity declarations, attributes, grouping, doc/impl fields, comments, and code blocks.
+
+%declare _INDENT _DEDENT
+
+start: (_NEWLINE | statement | _INDENT | _DEDENT)*
+
+statement: comment
+         | doc_field
+         | impl_field
+         | entity
+
+comment.2: /#[^\n]*/
+
+entity: entity_line (child_block)?
+
+entity_line: keyword entity_name hash_id? attributes? grouped_entities? hash_id?
+
+hash_id: (":::" _HASH_VALUE_TERMINAL)+
+
+_HASH_VALUE_TERMINAL.8: /[A-Za-z0-9_]+/
+
+child_block: _INDENT (statement | _NEWLINE)* _DEDENT+
+
+grouped_entities: _AMPERSAND entity_name (_AMPERSAND entity_name)*
+
+entity_name: _ENTITY_NAME_TERMINAL
+
+_ENTITY_NAME_TERMINAL: /[^[\]&#:,\n]+/
+
+attributes: "[" attribute ("," attribute)* "]"
+
+attribute: ATTR_KEY ":" attr_value
+
+ATTR_KEY.45: /[a-zA-Z_][a-zA-Z0-9_]*(?=[ \t]*:)/
+
+attr_value: array
+          | ESCAPED_STRING -> string_value
+          | SIGNED_NUMBER  -> number_value
+          | UNQUOTED_SIMPLE_VALUE
+
+array: "[" [attr_value ("," attr_value)*] "]"
+
+UNQUOTED_SIMPLE_VALUE.60: /[^ \t,\]\[\n]+(?:\[\])*/
+
+doc_field: "doc:" docstring _NEWLINE?
+docstring: /[^\n]+/
+
+impl_field: "impl:" _NEWLINE _INDENT CODE_BLOCK_RAW _NEWLINE* _DEDENT
+
+keyword.1: /[a-zA-Z_][a-zA-Z0-9_]*:/
+_AMPERSAND: "&"
+
+// --- Terminals and helpers ---
+
+_NEWLINE: /(\r?\n)+[ \t]*/
+ESCAPED_STRING.70: /\"([^\"\\]|\\.)*\"/
+SIGNED_NUMBER.6: /-?\d+(\.\d+)?/
+
+%ignore /[ \t]+/
+
+CODE_BLOCK_RAW: /```[ \t]*[A-Za-z0-9_+-]*\n[\s\S]*?```(?:\r?\n)?/ 
