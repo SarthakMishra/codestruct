@@ -1,0 +1,85 @@
+# Edge Cases Test File
+# This file tests various edge cases and potentially tricky syntax
+
+# Empty entities
+module: EmptyModule
+
+class: EmptyClass
+
+# Multiple attributes with special characters
+func: complexFunc [name:"Function with spaces", complex:true, priority:-5, ratio:3.14159, tags:["tag1", "tag2"]]
+  doc: Tests complex attribute values
+
+# Unicode characters in names
+class: 🔥FireEmoji
+  doc: Class with emoji in name
+
+class: СлассКириллица
+  doc: Class with Cyrillic name
+
+# Very long entity name
+module: ThisIsAVeryLongModuleNameThatMightCauseProblemsIfThereAreLimitsOnEntityNameLengthInTheParser
+
+# Deeply nested structure
+module: Level1
+  module: Level2
+    module: Level3
+      module: Level4
+        module: Level5
+          class: DeepClass
+            func: deepMethod
+              doc: This is a deeply nested method
+
+# Comments with special characters
+# !@#$%^&*()_+-={}[]|\\:;"'<>,.?/
+
+# Entity named with a keyword
+class: class
+  func: func
+    var: var
+      const: const
+
+# Multiple hash IDs (should only take the last one)
+func: multiHash ::: aaa ::: bbb ::: ccc
+
+# Unusual spacing and formatting
+   module:    SpacedModule    :::    abc123   [  key  :  value  ]   
+     doc:    Spaced documentation
+     
+     class:SpacedClass[compact:true]&First&Second
+       func:  compactFunction
+
+# Special characters in attribute values
+class: SpecialChars [desc:"Contains [brackets], {braces}, and \"quotes\""]
+
+# Empty code block
+func: emptyImpl
+  impl:
+    ```
+    ```
+
+# Code block with language containing special characters
+func: specialLangImpl
+  impl:
+    ```c++17_with-extensions
+    std::cout << "Testing" << std::endl;
+    ```
+
+# Escaped sequences in strings
+var: escapedString [value:"Line1\nLine2\tTabbed\"Quoted\"\\Backslash"]
+
+# Quoted strings with spaces
+class: "Class With Spaces"
+  func: "Method with spaces"
+
+# Grouped entity with spaces
+class: Vehicles &"Sports Car" &"Pick-up Truck"
+
+# Entity with all possible elements
+func: everything [key1:value1, key2:value2] &Group1 &Group2 ::: abcdef
+  doc: Documentation for everything
+  impl:
+    ```python
+    def everything():
+        return "everything"
+    ``` 

@@ -1,0 +1,193 @@
+# Complex CodeStruct Test File
+# This file contains more complex structures and edge cases
+
+# Top-level system definition
+system: ECommerce ::: 8f72a1b5
+  doc: E-commerce platform with multiple services and components
+  
+  # Core domain services
+  service: UserService [status:active, priority:high]
+    doc: Handles user authentication, profiles, and permissions
+    
+    endpoint: /api/users/login [method:POST, auth:none]
+      doc: User login endpoint
+      impl:
+        ```typescript
+        async function login(req: Request, res: Response) {
+          const { email, password } = req.body;
+          try {
+            const user = await UserModel.findByEmail(email);
+            if (!user || !user.validatePassword(password)) {
+              return res.status(401).json({ error: 'Invalid credentials' });
+            }
+            const token = generateToken(user);
+            return res.json({ token, user: user.toJSON() });
+          } catch (error) {
+            return res.status(500).json({ error: 'Server error' });
+          }
+        }
+        ```
+    
+    endpoint: /api/users/register [method:POST, rate_limit:100]
+      doc: User registration endpoint
+    
+    endpoint: /api/users/profile [method:GET, auth:required]
+      doc: Get user profile information
+    
+    interface: IUserRepository
+      doc: Repository interface for user data access
+      
+      func: findByEmail
+        doc: Find a user by email address
+      
+      func: create
+        doc: Create a new user
+      
+      func: update
+        doc: Update an existing user
+    
+    class: UserModel [implements:IUserRepository]
+      doc: MongoDB implementation of user repository
+      
+      func: findByEmail
+        doc: Find a user by email address
+        impl:
+          ```typescript
+          async function findByEmail(email: string): Promise<User | null> {
+            return UserCollection.findOne({ email: email.toLowerCase() });
+          }
+          ```
+      
+      func: validatePassword
+        doc: Check if password is valid
+        impl:
+          ```typescript
+          function validatePassword(plaintext: string): boolean {
+            return bcrypt.compareSync(plaintext, this.password_hash);
+          }
+          ```
+
+  # Product catalog service
+  service: ProductService [status:active, cache:true] &SearchableService &RecommendationService
+    doc: Manages product catalog, inventory, and search
+    
+    model: Product
+      doc: Product data model
+      
+      field: id [type:string, required:true]
+        doc: Unique product identifier
+      
+      field: name [type:string, required:true, index:true]
+        doc: Product name
+      
+      field: description [type:string]
+        doc: Product description
+      
+      field: price [type:number, min:0]
+        doc: Product price
+      
+      field: categories [type:string[], index:true]
+        doc: Product categories
+    
+    enum: ProductStatus
+      doc: Status of a product in the catalog
+      
+      const: DRAFT [value:0]
+        doc: Product is in draft mode, not visible
+      
+      const: ACTIVE [value:1]
+        doc: Product is active and available
+      
+      const: OUT_OF_STOCK [value:2]
+        doc: Product is temporarily out of stock
+      
+      const: DISCONTINUED [value:3]
+        doc: Product is permanently discontinued
+    
+    interface: IProductSearchStrategy
+      doc: Strategy for searching products
+      
+      func: search
+        doc: Search for products
+    
+    class: ElasticSearchStrategy [implements:IProductSearchStrategy]
+      doc: Elasticsearch implementation of product search
+
+  # Order processing service
+  service: OrderService [async:true, retry:3]
+    doc: Handles order processing, payments, and fulfillment
+    
+    model: Order
+      doc: Order data model
+      
+      field: id [type:string, required:true]
+      field: user_id [type:string, required:true, index:true]
+      field: items [type:OrderItem[], required:true]
+      field: status [type:OrderStatus, default:PENDING]
+      field: created_at [type:Date, default:"Date.now()"]
+      field: updated_at [type:Date, default:"Date.now()"]
+    
+    event: OrderCreated
+      doc: Emitted when a new order is created
+      
+      field: order_id [type:string]
+      field: user_id [type:string]
+      field: total [type:number]
+    
+    event: OrderStatusChanged
+      doc: Emitted when an order's status changes
+      
+      field: order_id [type:string]
+      field: old_status [type:OrderStatus]
+      field: new_status [type:OrderStatus]
+      field: timestamp [type:Date]
+
+# Cross-cutting concerns
+module: Common
+  doc: Common utilities and shared components
+  
+  interface: ILogger
+    doc: Logging interface
+    
+    func: info
+      doc: Log informational message
+    
+    func: error
+      doc: Log error message
+    
+    func: warn
+      doc: Log warning message
+  
+  class: FileLogger [implements:ILogger]
+    doc: File-based logger implementation
+  
+  class: CloudLogger [implements:ILogger]
+    doc: Cloud-based logger implementation
+
+# Error handling
+module: ErrorHandling
+  doc: Error handling and exception management
+  
+  class: ApplicationError
+    doc: Base application error class
+    
+    func: constructor
+      doc: Create a new application error
+      impl:
+        ```typescript
+        constructor(message: string, code?: string) {
+          super(message);
+          this.name = this.constructor.name;
+          this.code = code || 'UNKNOWN_ERROR';
+          Error.captureStackTrace(this, this.constructor);
+        }
+        ```
+  
+  class: ValidationError [extends:ApplicationError]
+    doc: Error for validation failures
+  
+  class: AuthenticationError [extends:ApplicationError]
+    doc: Error for authentication failures
+  
+  class: AuthorizationError [extends:ApplicationError]
+    doc: Error for authorization failures 

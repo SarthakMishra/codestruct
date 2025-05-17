@@ -1,0 +1,75 @@
+# Simple CodeStruct Test File
+
+module: TestModule
+  # Module comment
+  
+  class: SimpleClass
+    doc: A simple class for testing
+    
+    func: test_method
+      doc: A test method
+      impl:
+        ```python
+        def test_method():
+            return "Hello, world!"
+        ```
+
+module: MyTestModule
+  # This is a module comment
+  
+  class: TestClass [visibility:public, abstract:true] &BaseClass &ITestable
+    doc: This is a test class that demonstrates the CodeStruct syntax
+    
+    func: constructor
+      doc: Creates a new instance of TestClass
+      impl:
+        ```python
+        def __init__(self):
+          self.value = 0
+          self.name = "Test"
+        ```
+    
+    func: calculate [static:true, complexity:5]
+      doc: Performs a calculation with the given parameters
+      impl:
+        ```python
+        def calculate(x, y):
+          return x * y + (x / y if y != 0 else 0)
+        ```
+    
+    var: count [type:int, default:0]
+      doc: Keeps track of the number of calculations
+    
+    class: NestedClass
+      doc: A nested class for demonstration purposes
+      
+      func: nestedMethod
+        doc: A method in the nested class
+        impl:
+          ```python
+          def nested_method(self):
+            print("Hello from nested class")
+          ```
+
+module: AnotherModule ::: abc123def
+  # This module uses a hash ID
+  
+  interface: IService
+    doc: Defines a service contract
+    
+    func: process
+      doc: Processes the input data
+    
+    func: validate
+      doc: Validates the input data
+  
+  enum: Status
+    doc: Represents the status of an operation
+    
+    const: SUCCESS [value:0]
+      doc: Operation completed successfully
+    
+    const: FAILURE [value:1]
+      doc: Operation failed to complete
+    
+    const: PENDING [value:2]
