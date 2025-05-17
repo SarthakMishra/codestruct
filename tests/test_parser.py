@@ -13,15 +13,15 @@ from codestruct.transformer import CodeStructTransformer
 # Define paths to test files
 BASE_TEST_PATH = Path(__file__).parent
 TEST_CASES_PATH = BASE_TEST_PATH / "test_cases"
-SIMPLE_CSTXT_PATH = TEST_CASES_PATH / "simple.cstxt"
-COMPLEX_CSTXT_PATH = TEST_CASES_PATH / "complex.cstxt"
-EDGE_CASES_CSTXT_PATH = TEST_CASES_PATH / "edge_cases.cstxt"
+SIMPLE_CSTXT_PATH = TEST_CASES_PATH / "simple.cst"
+COMPLEX_CSTXT_PATH = TEST_CASES_PATH / "complex.cst"
+EDGE_CASES_CSTXT_PATH = TEST_CASES_PATH / "edge_cases.cst"
 
 VALID_CSTXT_FILES = [SIMPLE_CSTXT_PATH, COMPLEX_CSTXT_PATH, EDGE_CASES_CSTXT_PATH]
 VALID_CSTXT_CONTENTS_AND_NAMES = [
-	(SIMPLE_CSTXT_PATH.read_text(), "simple.cstxt"),
-	(COMPLEX_CSTXT_PATH.read_text(), "complex.cstxt"),
-	(EDGE_CASES_CSTXT_PATH.read_text(), "edge_cases.cstxt"),
+	(SIMPLE_CSTXT_PATH.read_text(), "simple.cst"),
+	(COMPLEX_CSTXT_PATH.read_text(), "complex.cst"),
+	(EDGE_CASES_CSTXT_PATH.read_text(), "edge_cases.cst"),
 ]
 
 
