@@ -41,7 +41,7 @@ attr_value: array
 
 array: "[" [attr_value ("," attr_value)*] "]"
 
-UNQUOTED_SIMPLE_VALUE.60: /[^ \t,\]\[\n]+(?:\[\])*/
+UNQUOTED_SIMPLE_VALUE.5: /[^ \t,\]\[\n]+(?:\[\])*/
 
 doc_field: "doc:" docstring _NEWLINE?
 docstring: /[^\n]+/

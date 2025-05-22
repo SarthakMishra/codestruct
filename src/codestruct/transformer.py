@@ -198,13 +198,19 @@ class CodeStructTransformer(Transformer):
 	def attributes(self, items: list) -> dict:
 		"""Transform attributes into a dictionary.
 
-		Processes a list of attribute items into a single dictionary.
+		Processes a list of attribute items into a single dictionary, converting raw tokens to appropriate types.
 		"""
 		attrs = {}
 		for item in items:
 			if isinstance(item, dict) and len(item) == 1:
 				key, value = next(iter(item.items()))
-				attrs[key] = value
+				# Convert raw tokens to proper types
+				if hasattr(value, "type") and hasattr(value, "value"):
+					# Use attr_value to convert token
+					converted = self.attr_value([value])
+					attrs[key] = converted
+				else:
+					attrs[key] = value
 		return {"attributes": attrs}
 
 	def attribute(self, items: list) -> dict:
