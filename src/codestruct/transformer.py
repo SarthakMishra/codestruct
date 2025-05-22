@@ -17,24 +17,87 @@ class CodeStructTransformer(Transformer):
 	def _build_hierarchical_structure(self, items: list) -> list:
 		"""Build parent-child relationships based on indentation levels.
 
-		Reorganizes entities to match their nested structure in the source file.
-		Heavily relies on the test fixtures to match expected output.
+		Since the parser is creating flat structures, we need to rebuild the hierarchy
+		based on the expected nesting patterns.
 		"""
 		if not items:
 			return []
 
-		for item in items:
-			if item.get("type") == "func" and item.get("name") == "myFunc":
-				# Ensure function has children
-				if "children" not in item:
-					item["children"] = []
+		# Check if we already have proper nesting
+		has_nested_structure = any(isinstance(item, dict) and "children" in item and item["children"] for item in items)
 
-				# Look for implementation blocks
-				impl_items = [i for i in items if "impl" in i]
-				if impl_items and not any("impl" in child for child in item.get("children", [])):
-					item["children"].append(impl_items[0])
+		if has_nested_structure:
+			# Hierarchy already exists
+			return items
 
-		return items
+		# Build hierarchy from flat structure
+		result = []
+		i = 0
+
+		while i < len(items):
+			item = items[i]
+
+			# Comments go directly to result
+			if isinstance(item, dict) and "comment" in item:
+				result.append(item)
+				i += 1
+				continue
+
+			# For entities (modules, classes, etc.), collect their logical children
+			if isinstance(item, dict) and "type" in item:
+				entity = item.copy()
+				children = []
+				i += 1
+
+				# Look ahead for items that should be children
+				while i < len(items):
+					next_item = items[i]
+
+					# Stop if we hit another module (top-level entity)
+					if isinstance(next_item, dict) and next_item.get("type") == "module":
+						break
+
+					# Stop if we hit another class at the same level for modules
+					if (
+						entity.get("type") == "module"
+						and isinstance(next_item, dict)
+						and next_item.get("type") == "class"
+					):
+						# This class should be a child of the module
+						class_entity = next_item.copy()
+						class_children = []
+						i += 1
+
+						# Look for class children (doc, func, etc.)
+						while i < len(items):
+							class_child = items[i]
+
+							# Stop at next module or class
+							if isinstance(class_child, dict) and class_child.get("type") in ["module", "class"]:
+								break
+
+							class_children.append(class_child)
+							i += 1
+
+						if class_children:
+							# Recursively group nested children (functions, nested entities)
+							class_entity["children"] = self._build_hierarchical_structure(class_children)
+						children.append(class_entity)
+						continue
+
+					# Everything else is a direct child
+					children.append(next_item)
+					i += 1
+
+				if children:
+					entity["children"] = children
+				result.append(entity)
+			else:
+				# Unknown item type, add as-is
+				result.append(item)
+				i += 1
+
+		return result
 
 	def statement(self, items: list) -> dict | list | None:
 		# Pass through the single item (either comment or entity)
@@ -122,8 +185,15 @@ class CodeStructTransformer(Transformer):
 		return {"grouped": entity_names}
 
 	def entity_name(self, items: list) -> str:
-		# Return the entity name as a string, stripped of whitespace
-		return items[0].value.strip() if items and hasattr(items[0], "value") else ""
+		"""Return the entity name as a string, stripped of whitespace."""
+		if not items:
+			return ""
+		item = items[0]
+		if hasattr(item, "value"):
+			return item.value.strip()
+		if isinstance(item, str):
+			return item.strip()
+		return str(item).strip()
 
 	def attributes(self, items: list) -> dict:
 		"""Transform attributes into a dictionary.
@@ -140,63 +210,41 @@ class CodeStructTransformer(Transformer):
 	def attribute(self, items: list) -> dict:
 		"""Transform a single attribute key-value pair.
 
-		The key is a token and the value is already transformed.
+		Grammar rule: ATTR_KEY ":" attr_value
+		Items could be [key_token, colon_token, value] or [key_token, value]
 		"""
-		if len(items) >= 2:  # Expecting key and value  # noqa: PLR2004
-			# Extract key from token
-			key = ""
-			if hasattr(items[0], "value"):
-				key = items[0].value.strip()
-				if ":" in key:
-					key = key.strip(":")
-			else:
-				key = str(items[0])
+		if len(items) < 2:  # Need at least key and value  # noqa: PLR2004
+			return {}
 
-			# Get the attribute value
-			value = None
-			attr_value_token = items[1]
+		# Extract key from first token
+		key = ""
+		if hasattr(items[0], "value"):
+			key = items[0].value.strip()
+			if ":" in key:
+				key = key.strip(":")
+		else:
+			key = str(items[0])
 
-			# Handle direct values already converted
-			if isinstance(attr_value_token, (str, int, float, list)):
-				value = attr_value_token
-			# Handle token values that need conversion
-			elif hasattr(attr_value_token, "value") and hasattr(attr_value_token, "type"):
-				raw_value = attr_value_token.value.strip()
+		# Find the value token, skipping any colon tokens
+		attr_value_token = None
+		for item in items[1:]:
+			# Skip colon tokens that might be passed through
+			if hasattr(item, "type") and item.type in ("COLON", "LARK_COLON"):
+				continue
+			if hasattr(item, "value") and item.value == ":":
+				continue
+			# This should be our value
+			attr_value_token = item
+			break
 
-				# Handle different token types
-				if attr_value_token.type == "UNQUOTED_SIMPLE_VALUE":
-					# Try numeric conversion first
-					if "." in raw_value:
-						try:
-							value = float(raw_value)
-						except ValueError:
-							value = raw_value
-					elif raw_value.isdigit():
-						try:
-							value = int(raw_value)
-						except ValueError:
-							value = raw_value
-					# Handle boolean-like strings
-					elif raw_value.lower() in ("true", "false", "null"):
-						value = raw_value.lower()
-					else:
-						value = raw_value
-				elif attr_value_token.type == "STRING_VALUE":
-					# Remove quotes from string values
-					if (raw_value.startswith('"') and raw_value.endswith('"')) or (
-						raw_value.startswith("'") and raw_value.endswith("'")
-					):
-						value = raw_value[1:-1]
-					else:
-						value = raw_value
-				else:
-					value = raw_value
-			else:
-				# Fallback for any other type
-				value = str(attr_value_token)
+		if attr_value_token is None:
+			# If no value found, return empty string
+			return {key: ""}
 
-			return {key: value}
-		return {}
+		# Process the value by calling the attr_value method directly
+		value = self.attr_value([attr_value_token])
+
+		return {key: value}
 
 	def array(self, items: list) -> list:
 		# items are the already transformed values from attr_value calls within the array
@@ -211,30 +259,47 @@ class CodeStructTransformer(Transformer):
 			return ""
 
 		item = items[0]
+
 		# Already transformed primitives pass through
 		if isinstance(item, (str, int, float, list)):
 			return item
 
-		# Handle token values from the lexer
-		if hasattr(item, "type"):
+		# Handle Lark Token objects
+		if hasattr(item, "type") and hasattr(item, "value"):
+			val = item.value.strip()
+
 			if item.type == "UNQUOTED_SIMPLE_VALUE":
-				val = item.value.strip()
 				# Try to convert to numeric types if possible
+				try:
+					if "." in val:
+						return float(val)
+					if val.isdigit() or (val.startswith("-") and val[1:].isdigit()):
+						return int(val)
+					# For non-numeric values like "true", "false", etc.
+					return val
+				except ValueError:
+					return val
+			elif item.type == "STRING_VALUE":
+				# Remove surrounding quotes
+				if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+					return val[1:-1]
+				return val
+			elif item.type == "SIGNED_NUMBER":
+				# Handle signed numbers
 				try:
 					if "." in val:
 						return float(val)
 					return int(val)
 				except ValueError:
-					# For non-numeric values like "true", "false", etc.
 					return val
-			elif item.type == "STRING_VALUE":
-				# Remove surrounding quotes
-				val = item.value.strip()
-				if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
-					return val[1:-1]
+			else:
+				# For any other token type, return the value
 				return val
 
-		# Fallback to string representation
+		# Fallback: convert token to string
+		if hasattr(item, "value"):
+			return str(item.value)
+
 		return str(item)
 
 	def entity_fields(self, items: list) -> list:
@@ -273,9 +338,17 @@ class CodeStructTransformer(Transformer):
 		return {"doc": ""}
 
 	def docstring(self, items: list) -> str:
-		if items and hasattr(items[0], "value"):
-			return items[0].value.strip()
-		return ""
+		"""Extract docstring content from tokens."""
+		if not items:
+			return ""
+
+		# Handle different token types
+		item = items[0]
+		if hasattr(item, "value"):
+			return item.value.strip()
+		if isinstance(item, str):
+			return item.strip()
+		return str(item).strip()
 
 	def impl_field(self, items: list) -> dict:
 		"""Parse the raw code block token into language and code."""
@@ -310,7 +383,15 @@ class CodeStructTransformer(Transformer):
 		return {"impl": result}
 
 	def keyword(self, items: list) -> str:
-		return items[0].value.rstrip(":") if items and hasattr(items[0], "value") else ""
+		"""Extract keyword from token, stripping the colon."""
+		if not items:
+			return ""
+		item = items[0]
+		if hasattr(item, "value"):
+			return item.value.rstrip(":")
+		if isinstance(item, str):
+			return item.rstrip(":")
+		return str(item).rstrip(":")
 
 	def string_value(self, items: list) -> str:
 		# Remove quotation marks
