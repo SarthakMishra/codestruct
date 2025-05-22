@@ -53,10 +53,6 @@ venv = ".venv"
 # Extra paths to search for imported modules
 extraPaths = ["src"]
 
-[tool.pytest]
-testpaths = ["tests"]
-pythonpath = ["src"]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
