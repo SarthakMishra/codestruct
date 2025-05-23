@@ -11,11 +11,12 @@ requires-python = ">=3.12"
 dependencies = [
     "lark>=1.2.2",
     "typer>=0.15.4",
-    "rich>=14.0.0",
+    "pygls>=1.3.1",
 ]
 
 [project.scripts]
-codestruct = "codestruct.cli.main:app"
+codestruct = "codestruct.cli.__main__:app"
+codestruct-lsp = "codestruct.lsp.__main__:main"
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,79 @@
+{
+  "name": "CodeStruct Language Server",
+  "description": "Language Server for CodeStruct notation files",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/codestruct"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "codestruct",
+        "aliases": ["CodeStruct", "cst"],
+        "extensions": [".cst", ".codestruct"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "codestruct",
+        "scopeName": "source.codestruct",
+        "path": "./syntaxes/codestruct.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "CodeStruct",
+      "properties": {
+        "codestruct.server.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CodeStruct language server"
+        },
+        "codestruct.server.path": {
+          "type": "string",
+          "default": "codestruct-lsp",
+          "description": "Path to CodeStruct language server executable"
+        },
+        "codestruct.linting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable linting"
+        },
+        "codestruct.formatting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable formatting"
+        },
+        "codestruct.completion.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable code completion"
+        }
+      }
+    }
+  },
+  "activationEvents": [
+    "onLanguage:codestruct"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "16.x",
+    "@types/vscode": "^1.60.0",
+    "typescript": "^4.4.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^7.0.0"
+  }
+} 
+ 
