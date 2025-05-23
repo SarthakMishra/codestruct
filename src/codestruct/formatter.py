@@ -16,6 +16,8 @@ EXPECTED_COLON_PARTS = 2
 class CodeStructFormatter:
 	"""Formatter for CodeStruct files that can auto-fix some linting issues and enforce style."""
 
+	_instance = None
+
 	def __init__(self, indent_size: int = 2, auto_add_docs: bool = True) -> None:
 		"""Initialize the formatter.
 
@@ -31,6 +33,21 @@ class CodeStructFormatter:
 		self.auto_add_docs = auto_add_docs
 		self.parser = CodeStructParser()
 		self.linter = CodeStructLinter()
+
+	@classmethod
+	def get_instance(cls, indent_size: int = 2, auto_add_docs: bool = True) -> "CodeStructFormatter":
+		"""Get a singleton instance of the formatter to avoid unnecessary initialization.
+
+		Args:
+			indent_size: Number of spaces for indentation (2 or 4)
+			auto_add_docs: Whether to automatically add placeholder documentation
+
+		Returns:
+			CodeStructFormatter: The singleton instance
+		"""
+		if cls._instance is None:
+			cls._instance = cls(indent_size, auto_add_docs)
+		return cls._instance
 
 	def format_file(self, file_path: str, auto_fix: bool = True) -> tuple[str, list[LintMessage]]:
 		"""Format a CodeStruct file and optionally auto-fix issues.

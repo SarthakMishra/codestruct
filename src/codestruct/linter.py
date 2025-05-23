@@ -28,6 +28,8 @@ class LintMessage:
 class CodeStructLinter:
 	"""Linter for CodeStruct notation."""
 
+	_instance = None
+
 	def __init__(self) -> None:
 		"""Initialize the linter."""
 		self.parser = CodeStructParser()
@@ -37,6 +39,17 @@ class CodeStructLinter:
 			self.check_hash_format,
 			self.check_attribute_naming,
 		]
+
+	@classmethod
+	def get_instance(cls) -> "CodeStructLinter":
+		"""Get a singleton instance of the linter to avoid unnecessary initialization.
+
+		Returns:
+			CodeStructLinter: The singleton instance
+		"""
+		if cls._instance is None:
+			cls._instance = cls()
+		return cls._instance
 
 	def lint_file(self, file_path: str) -> list[LintMessage]:
 		"""Lint a CodeStruct file.

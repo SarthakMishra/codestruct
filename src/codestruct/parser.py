@@ -123,6 +123,8 @@ class ParseError(LarkParseError):
 class CodeStructParser:
 	"""Parser for CodeStruct notation."""
 
+	_instance = None
+
 	def __init__(self, debug: bool = False) -> None:
 		"""Initialize the CodeStruct parser.
 
@@ -144,6 +146,17 @@ class CodeStructParser:
 		except Exception as e:
 			msg = f"Error initializing parser: {e!s}"
 			raise LarkParseError(msg) from e
+
+	@classmethod
+	def get_instance(cls) -> "CodeStructParser":
+		"""Get a singleton instance of the parser to avoid unnecessary initialization.
+
+		Returns:
+			CodeStructParser: The singleton instance
+		"""
+		if cls._instance is None:
+			cls._instance = cls()
+		return cls._instance
 
 	def parse_string(self, text: str) -> Tree:
 		"""Parse CodeStruct from a string.

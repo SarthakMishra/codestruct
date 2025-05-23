@@ -9,6 +9,19 @@ MIN_ATTRIBUTE_ITEMS = 2
 class CodeStructTransformer(Transformer):
 	"""Transform a CodeStruct parse tree into a dictionary structure."""
 
+	_instance = None
+
+	@classmethod
+	def get_instance(cls) -> "CodeStructTransformer":
+		"""Get a singleton instance of the transformer to avoid unnecessary initialization.
+
+		Returns:
+			CodeStructTransformer: The singleton instance
+		"""
+		if cls._instance is None:
+			cls._instance = cls()
+		return cls._instance
+
 	def start(self, items: list) -> list:
 		# Filter non-dict items and build the hierarchical structure
 		filtered_items = [item for item in items if isinstance(item, dict)]
