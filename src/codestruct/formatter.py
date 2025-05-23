@@ -4,8 +4,6 @@ import re
 from pathlib import Path
 from re import Match
 
-from lark import Token, Tree
-
 from .linter import CodeStructLinter, LintMessage
 from .parser import CodeStructParser, ParseError
 
@@ -279,7 +277,7 @@ class CodeStructFormatter:
 	def _add_missing_docs(self, content: str) -> str:
 		"""Add placeholder documentation for entities missing docs."""
 		try:
-			tree = self.parser.parse_string(content)
+			self.parser.parse_string(content)
 		except ParseError:
 			# If we can't parse, don't try to add docs
 			return content
@@ -287,53 +285,57 @@ class CodeStructFormatter:
 		lines = content.split("\n")
 		lines_to_add = {}  # line_number -> doc_line_to_insert
 
-		# Find entities that need documentation (using same logic as linter)
-		for entity in tree.find_data("entity"):
-			entity_type: str | None = None
-			entity_name: str | None = None
-			entity_line_num = None
+		# Process each line to find entities and check for documentation
+		for i, line in enumerate(lines):
+			stripped = line.strip()
 
-			# Get entity type and name
-			for child in entity.children:
-				if isinstance(child, Tree) and child.data == "entity_line":
-					# Get position from the entity_line for insertion
-					if hasattr(child, "meta"):
-						entity_line_num = getattr(child.meta, "line", None)
-						if entity_line_num is not None:
-							entity_line_num -= 1  # Convert to 0-based
-
-					# Process children to find type and name
-					for i, subchild in enumerate(child.children):
-						if i == 0 and isinstance(subchild, Token):  # First child is the keyword
-							entity_type = subchild.value.rstrip(":")
-						elif i == 1 and isinstance(subchild, Token):  # Second child is the name
-							entity_name = subchild.value.strip()
-
-			# Skip entities that aren't module/class/func
-			if not entity_type or entity_type not in ["module", "class", "func"]:
+			# Skip empty lines, comments, and existing doc fields
+			if not stripped or stripped.startswith(("#", "doc:")):
 				continue
 
-			# Check if this entity has a doc_field
-			has_doc = False
-			for child in entity.children:
-				if isinstance(child, Tree) and child.data == "child_block":
-					for subchild in child.children:
-						if isinstance(subchild, Tree) and subchild.data == "doc_field":
+			# Check if this line is an entity declaration
+			if ":" in stripped and not stripped.startswith("impl:"):
+				# Parse entity type and name
+				colon_idx = stripped.find(":")
+				entity_type = stripped[:colon_idx].strip()
+				rest = stripped[colon_idx + 1 :].strip()
+
+				# Extract entity name (before any attributes)
+				entity_name = rest.split("[")[0].strip() if "[" in rest else rest.strip()
+
+				# Only add docs for module, class, func
+				if entity_type in ["module", "class", "func"] and entity_name:
+					# Check if the next few lines contain a doc field
+					has_doc = False
+					entity_indent = len(line) - len(line.lstrip())
+
+					# Look ahead to see if there's a doc field as a child
+					for j in range(i + 1, min(i + 10, len(lines))):  # Check next 10 lines
+						next_line = lines[j]
+						next_stripped = next_line.strip()
+
+						if not next_stripped:
+							continue
+
+						next_indent = len(next_line) - len(next_line.lstrip())
+
+						# If we hit a line with same or less indentation, we're done checking
+						if next_indent <= entity_indent:
+							break
+
+						# If we find a doc field as a child, mark as having doc
+						if next_stripped.startswith("doc:"):
 							has_doc = True
 							break
 
-			# Add documentation if needed
-			if not has_doc and entity_name and entity_line_num is not None and 0 <= entity_line_num < len(lines):
-				entity_line = lines[entity_line_num]
-				indent = len(entity_line) - len(entity_line.lstrip())
-				child_indent = " " * (indent + self.indent_size)
+					# Add documentation if needed
+					if not has_doc:
+						child_indent = " " * (entity_indent + self.indent_size)
+						doc_text = self._generate_placeholder_doc(entity_type, entity_name)
+						doc_line = f"{child_indent}doc: {doc_text}"
 
-				# Create appropriate placeholder documentation
-				doc_text = self._generate_placeholder_doc(entity_type, entity_name)
-				doc_line = f"{child_indent}doc: {doc_text}"
-
-				# Insert after the entity line
-				lines_to_add[entity_line_num + 1] = doc_line
+						# Insert after the entity line
+						lines_to_add[i + 1] = doc_line
 
 		# Insert documentation lines in reverse order to maintain line numbers
 		for line_num in sorted(lines_to_add.keys(), reverse=True):

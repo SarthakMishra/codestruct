@@ -81,10 +81,11 @@ class TestCodeStructFormatter:
 		expected = "func: test [type:STRING, default:'value', static:true]"
 		assert formatted == expected
 
-	def test_fix_attribute_naming_pascal_case(self, formatter):
+	def test_fix_attribute_naming_pascal_case(self):
 		"""Test fixing PascalCase attribute names."""
+		formatter_no_docs = CodeStructFormatter(auto_add_docs=False)
 		content = "class: MyClass [Visibility:public, IsAbstract:true]"
-		formatted, _ = formatter.format_string(content, auto_fix=True)
+		formatted, _ = formatter_no_docs.format_string(content, auto_fix=True)
 		expected = "class: MyClass [visibility:public, isAbstract:true]"
 		assert formatted == expected
 
@@ -95,10 +96,11 @@ class TestCodeStructFormatter:
 		expected = "var: count [maxValue:100, defaultName:'test']"
 		assert formatted == expected
 
-	def test_fix_attribute_naming_preserve_valid(self, formatter):
+	def test_fix_attribute_naming_preserve_valid(self):
 		"""Test that valid attribute names are preserved."""
+		formatter_no_docs = CodeStructFormatter(auto_add_docs=False)
 		content = "func: test [type:STRING, isStatic:true, max_count:10]"
-		formatted, _ = formatter.format_string(content, auto_fix=True)
+		formatted, _ = formatter_no_docs.format_string(content, auto_fix=True)
 		expected = "func: test [type:STRING, isStatic:true, max_count:10]"
 		assert formatted == expected
 

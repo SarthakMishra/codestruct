@@ -133,6 +133,8 @@ class CodeStructMinifier:
 		current_entity = None
 		children_stack = []
 		indent_stack = [0]  # Track indentation levels
+		skip_impl_block = False
+		impl_indent_level = 0
 
 		for _line_num, line in enumerate(lines):
 			stripped = line.strip()
@@ -141,16 +143,24 @@ class CodeStructMinifier:
 			if not stripped or stripped.startswith("#"):
 				continue
 
-			# Skip impl blocks (look for impl: followed by ```code```)
+			# Calculate current indentation
+			current_indent = len(line) - len(line.lstrip())
+
+			# Handle impl block skipping
 			if stripped.startswith("impl:"):
+				skip_impl_block = True
+				impl_indent_level = current_indent
 				continue
+
+			# Skip lines that are part of an impl block
+			if skip_impl_block:
+				if current_indent > impl_indent_level:
+					continue
+				skip_impl_block = False
 
 			# Skip doc fields (they're optional in minified format)
 			if stripped.startswith("doc:"):
 				continue
-
-			# Calculate current indentation
-			current_indent = len(line) - len(line.lstrip())
 
 			# Process indent changes
 			if current_indent > indent_stack[-1]:
@@ -171,32 +181,98 @@ class CodeStructMinifier:
 							parent_entity["children"].append(current_entity)
 						current_entity = parent_entity
 
+			# Check if this is a standalone attribute line or attribute block
+			if current_indent > 0 and children_stack and ":" in stripped:
+				# Check if this is an entity keyword or a standalone attribute
+				is_entity = any(
+					stripped.startswith(kw + ":")
+					for kw in [
+						"module",
+						"class",
+						"func",
+						"param",
+						"returns",
+						"var",
+						"const",
+						"type_alias",
+						"union",
+						"optional",
+						"import",
+						"dir",
+						"file",
+						"namespace",
+						"lambda",
+						"attr",
+					]
+				)
+
+				# Check if this is a standalone attribute block like "[type: FLOAT, default: 3.14159]"
+				is_attr_block = stripped.startswith("[") and stripped.endswith("]")
+
+				if not is_entity or is_attr_block:
+					# This looks like an attribute line or block for the parent entity
+					parent_entity = children_stack[-1]
+
+					if is_attr_block:
+						# Handle attribute block: [key:value, key:value]
+						attr_content = stripped[1:-1]  # Remove brackets
+						attr_dict = self._parse_attributes(attr_content)
+						parent_entity["attributes"].update(attr_dict)
+					else:
+						# Handle single attribute line: key: value
+						key, value = stripped.split(":", 1)
+						key = key.strip()
+						value = value.strip()
+
+						# Remove quotes from value
+						if (value.startswith('"') and value.endswith('"')) or (
+							value.startswith("'") and value.endswith("'")
+						):
+							value = value[1:-1]
+
+						# Apply transformations
+						short_key = self._shorten_attr_key(key)
+						short_value = self.type_map.get(value, value)
+						parent_entity["attributes"][short_key] = short_value
+					continue
+
 			# Parse the entity line
 			entity_data = self._parse_entity_line(stripped)
 			if entity_data:
-				# If we have a current entity and we're at the same level,
-				# add the previous entity to results
-				if current_entity and current_indent == indent_stack[-1]:
-					if children_stack:
-						parent = children_stack[-1]
-						if "children" not in parent:
-							parent["children"] = []
-						parent["children"].append(current_entity)
-					else:
-						entities.append(current_entity)
+				# If we have a current entity, we need to place it appropriately
+				if current_entity:
+					if current_indent == indent_stack[-1]:
+						# Same level - add previous entity as sibling
+						if children_stack:
+							parent = children_stack[-1]
+							if "children" not in parent:
+								parent["children"] = []
+							parent["children"].append(current_entity)
+						else:
+							# Top level entity
+							entities.append(current_entity)
+					elif current_indent > indent_stack[-1]:
+						# This shouldn't happen as we handle indentation above
+						pass
 
 				current_entity = entity_data
 
-		# Handle the last entity
+		# Handle the last entity - this is crucial for grouped entities with attributes
 		if current_entity:
 			# Close any remaining parent levels
 			while children_stack:
 				parent_entity = children_stack.pop()
-				if "children" not in parent_entity:
-					parent_entity["children"] = []
-				parent_entity["children"].append(current_entity)
+				if current_entity:
+					if "children" not in parent_entity:
+						parent_entity["children"] = []
+					parent_entity["children"].append(current_entity)
 				current_entity = parent_entity
 			entities.append(current_entity)
+
+		# Also handle case where we only have entities in the children_stack (no current_entity)
+		while children_stack:
+			parent_entity = children_stack.pop()
+			entities.append(parent_entity)
 
 		# Convert to minified format
 		return ";".join(self._entity_to_minified(entity) for entity in entities)
@@ -216,12 +292,14 @@ class CodeStructMinifier:
 			keyword = line[:colon_idx].strip()
 			rest = line[colon_idx + 1 :].strip()
 
-			# Parse grouped names and attributes
-			attr_match = re.search(r"\[([^\]]+)\]", rest)
+			# Find attributes by looking for balanced brackets
+			attr_match = self._find_attribute_section(rest)
 			attributes = {}
 			if attr_match:
-				attributes = self._parse_attributes(attr_match.group(1))
-				rest = rest[: attr_match.start()].strip()
+				attributes = self._parse_attributes(attr_match)
+				# Remove the attribute section from rest
+				attr_start = rest.find("[")
+				rest = rest[:attr_start].strip()
 
 			# Split grouped entities
 			names = [name.strip() for name in rest.split("&")]
@@ -242,16 +320,46 @@ class CodeStructMinifier:
 		keyword = line[:colon_idx].strip()
 		rest = line[colon_idx + 1 :].strip()
 
-		# Extract attributes if present
-		attr_match = re.search(r"\[([^\]]+)\]", rest)
+		# Find attributes by looking for balanced brackets
+		attr_match = self._find_attribute_section(rest)
 		attributes = {}
 		if attr_match:
-			attributes = self._parse_attributes(attr_match.group(1))
-			rest = rest[: attr_match.start()].strip()
+			attributes = self._parse_attributes(attr_match)
+			# Remove the attribute section from rest
+			attr_start = rest.find("[")
+			rest = rest[:attr_start].strip()
 
 		name = rest.strip()
 
 		return {"keyword": self._shorten_keyword(keyword), "name": name, "attributes": attributes, "children": []}
+
+	def _find_attribute_section(self, text: str) -> str | None:
+		"""Find and extract the attribute section [key:value, key:value] handling nested brackets in quotes."""
+		start_idx = text.find("[")
+		if start_idx == -1:
+			return None
+
+		bracket_count = 0
+		in_quotes = False
+		quote_char = None
+
+		for i, char in enumerate(text[start_idx:], start_idx):
+			if char in ('"', "'") and (i == start_idx or text[i - 1] != "\\"):
+				if not in_quotes:
+					in_quotes = True
+					quote_char = char
+				elif char == quote_char:
+					in_quotes = False
+					quote_char = None
+			elif not in_quotes:
+				if char == "[":
+					bracket_count += 1
+				elif char == "]":
+					bracket_count -= 1
+					if bracket_count == 0:
+						return text[start_idx + 1 : i]
+
+		return None
 
 	def _parse_attributes(self, attr_str: str) -> dict:
 		"""Parse attribute string into key-value pairs."""
@@ -261,10 +369,16 @@ class CodeStructMinifier:
 		attr_parts = []
 		current = ""
 		in_quotes = False
+		quote_char = None
 
 		for char in attr_str:
-			if char == '"' and (not current or current[-1] != "\\"):
-				in_quotes = not in_quotes
+			if char in ('"', "'") and (not current or current[-1] != "\\"):
+				if not in_quotes:
+					in_quotes = True
+					quote_char = char
+				elif char == quote_char:
+					in_quotes = False
+					quote_char = None
 			elif char == "," and not in_quotes:
 				attr_parts.append(current.strip())
 				current = ""
